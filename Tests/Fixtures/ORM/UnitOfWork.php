@@ -2,7 +2,7 @@
 
 namespace Xiidea\EasyAuditBundle\Tests\Fixtures\ORM;
 
-use Doctrine\Common\PropertyChangedListener;
+use Doctrine\Persistence\PropertyChangedListener;
 
 class UnitOfWork implements PropertyChangedListener
 {
