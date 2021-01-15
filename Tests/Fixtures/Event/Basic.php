@@ -11,11 +11,11 @@
 
 namespace Xiidea\EasyAuditBundle\Tests\Fixtures\Event;
 
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Contracts\EventDispatcher\Event;
 
 class Basic extends Event
 {
-    public function __construct() {
-
+    public function __construct()
+    {
     }
 }

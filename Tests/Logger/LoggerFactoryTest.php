@@ -11,15 +11,15 @@
 
 namespace Xiidea\EasyAuditBundle\Tests\Logger;
 
-
 use PHPUnit\Framework\TestCase;
+use Xiidea\EasyAuditBundle\Exception\InvalidServiceException;
 use Xiidea\EasyAuditBundle\Logger\LoggerFactory;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Common\InvalidLogger;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\ORM\AuditLog;
 
 class LoggerFactoryTest extends TestCase
 {
-    /** @var  LoggerFactory */
+    /** @var LoggerFactory */
     private $loggerFactory;
 
     private $channel = array(
@@ -33,35 +33,15 @@ class LoggerFactoryTest extends TestCase
         ),
     );
 
-    public function setUp()
-    {
+    public function setUp(): void    {
         $this->loggerFactory = new LoggerFactory();
     }
 
-
-    /**
-     * @expectedException \Xiidea\EasyAuditBundle\Exception\InvalidServiceException
-     */
     public function testThrowsExceptionOnAddInvalidLoggerWithDebugModeOn()
     {
         $this->initiateContainerWithDebugMode(true);
-        $this->loggerFactory->addLogger("invalid", new InvalidLogger());
-    }
-
-    public function testDoNotThrowsExceptionOnAddInvalidLoggerWithDebugModeDisable()
-    {
-        $this->initiateContainerWithDebugMode(false);
-        $this->loggerFactory->addLogger("invalid", new InvalidLogger());
-        $this->assertAttributeEquals(array(), 'loggers', $this->loggerFactory);
-    }
-
-    public function testLoggerFactoryThrowsNoExceptionOnAddValidLogger()
-    {
-        $logger1 = $this->createMock('Xiidea\EasyAuditBundle\Logger\LoggerInterface');
-
-        $this->loggerFactory->addLogger("valid", $logger1);
-
-        $this->assertAttributeEquals(array('valid' => $logger1), 'loggers', $this->loggerFactory);
+        $this->expectException(InvalidServiceException::class);
+        $this->loggerFactory->addLogger('invalid', new InvalidLogger());
     }
 
     public function testExecuteAllLoggers()
@@ -80,9 +60,8 @@ class LoggerFactoryTest extends TestCase
             ->with($this->equalTo($eventInfo));
 
         $loggerFactory = new LoggerFactory();
-        $loggerFactory->addLogger("logger1", $logger1);
-        $loggerFactory->addLogger("logger2", $logger2);
-
+        $loggerFactory->addLogger('logger1', $logger1);
+        $loggerFactory->addLogger('logger2', $logger2);
 
         $loggerFactory->executeLoggers($eventInfo);
     }
@@ -103,8 +82,8 @@ class LoggerFactoryTest extends TestCase
         $inValidLogger->expects($this->never())
             ->method('log');
 
-        $this->loggerFactory->addLogger("logger1", $validLogger);
-        $this->loggerFactory->addLogger("logger2", $inValidLogger);
+        $this->loggerFactory->addLogger('logger1', $validLogger);
+        $this->loggerFactory->addLogger('logger2', $inValidLogger);
 
         $this->loggerFactory->executeLoggers($eventInfo);
     }
@@ -117,7 +96,7 @@ class LoggerFactoryTest extends TestCase
             ->method('log');
 
         $loggerFactory = new LoggerFactory();
-        $loggerFactory->addLogger("logger1", $logger1);
+        $loggerFactory->addLogger('logger1', $logger1);
 
         $loggerFactory->executeLoggers(null);
     }
@@ -138,8 +117,8 @@ class LoggerFactoryTest extends TestCase
 
         $loggerFactory = new LoggerFactory($this->channel);
 
-        $loggerFactory->addLogger("logger1", $logger1);
-        $loggerFactory->addLogger("logger2", $logger2);
+        $loggerFactory->addLogger('logger1', $logger1);
+        $loggerFactory->addLogger('logger2', $logger2);
 
         $loggerFactory->executeLoggers($eventInfo);
     }
@@ -161,8 +140,8 @@ class LoggerFactoryTest extends TestCase
 
         $loggerFactory = new LoggerFactory();
 
-        $loggerFactory->addLogger("logger1", $logger1);
-        $loggerFactory->addLogger("logger2", $logger2);
+        $loggerFactory->addLogger('logger1', $logger1);
+        $loggerFactory->addLogger('logger2', $logger2);
 
         $loggerFactory->executeLoggers($eventInfo);
     }
@@ -180,10 +159,10 @@ class LoggerFactoryTest extends TestCase
                 'logger1' => array(
                     'type' => 'invalid',
                     'elements' => array('info'),
-                )
+                ),
             ));
 
-        $loggerFactory->addLogger("logger1", $logger1);
+        $loggerFactory->addLogger('logger1', $logger1);
 
         $loggerFactory->executeLoggers($eventInfo);
     }
@@ -196,4 +175,3 @@ class LoggerFactoryTest extends TestCase
         $this->loggerFactory->setDebug($on);
     }
 }
- 

@@ -11,12 +11,13 @@
 
 namespace Xiidea\EasyAuditBundle\Tests\Resolver;
 
-
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Component\Security\Core\Authentication\Token\SwitchUserToken;
+use Symfony\Contracts\EventDispatcher\Event;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Core\Role\SwitchUserRole;
+use Xiidea\EasyAuditBundle\Exception\InvalidServiceException;
+use Xiidea\EasyAuditBundle\Exception\UnrecognizedEventInfoException;
 use Xiidea\EasyAuditBundle\Resolver\DefaultEventResolver;
 use Xiidea\EasyAuditBundle\Resolver\EventResolverFactory;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Common\AuditObjectResolver;
@@ -26,7 +27,7 @@ use Xiidea\EasyAuditBundle\Tests\Fixtures\Common\InvalidEventInfoResolver;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Common\InvalidEventResolver;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Common\NullResolver;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\Basic;
-use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\EntityEvent;
+use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\DoctrineEvent;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\WithEmbeddedResolver;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\ORM\AuditLog;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\ORM\Movie;
@@ -34,18 +35,16 @@ use Xiidea\EasyAuditBundle\Tests\Fixtures\ORM\UserEntity;
 
 class EventResolverFactoryTest extends TestCase
 {
-
-    /** @var  \PHPUnit_Framework_MockObject_MockObject */
+    /** @var \PHPUnit_Framework_MockObject_MockObject */
     private $tokenStorage;
 
-    /** @var  EventResolverFactory */
+    /** @var EventResolverFactory */
     private $resolverFactory;
 
-    /** @var  Event */
+    /** @var Event */
     private $event;
 
-    public function setUp()
-    {
+    public function setUp(): void    {
         $this->tokenStorage = $this->createMock(TokenStorageInterface::class);
         $this->resolverFactory = new EventResolverFactory(array(), 'username', AuditLog::class);
         $this->resolverFactory->setTokenStorage($this->tokenStorage);
@@ -64,7 +63,6 @@ class EventResolverFactoryTest extends TestCase
             ->method('getToken')
             ->willReturn(new DummyToken(new UserEntity()));
 
-
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'basic');
 
         $this->assertEventInfo($auditLog, array(
@@ -72,7 +70,7 @@ class EventResolverFactoryTest extends TestCase
             'description' => 'basic',
             'user' => 'admin',
             'impersonatingUser' => null,
-            'ip' => '127.0.0.1'
+            'ip' => '127.0.0.1',
         ));
     }
 
@@ -90,7 +88,7 @@ class EventResolverFactoryTest extends TestCase
 
         $this->tokenStorage->expects($this->any())
             ->method('getToken')
-            ->willReturn(new DummyToken(new UserEntity(1, 'a', array(new SwitchUserRole('', $userToken)))));
+            ->willReturn(new SwitchUserToken(new UserEntity(1, 'a'), '', 'main', [], $userToken));
 
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'basic');
 
@@ -99,7 +97,7 @@ class EventResolverFactoryTest extends TestCase
             'description' => 'basic',
             'user' => 'a',
             'impersonatingUser' => 'admin',
-            'ip' => '127.0.0.1'
+            'ip' => '127.0.0.1',
         ));
     }
 
@@ -130,13 +128,10 @@ class EventResolverFactoryTest extends TestCase
             'description' => 'custom',
             'user' => 'By Command',
             'impersonatingUser' => null,
-            'ip' => ''
+            'ip' => '',
         ));
     }
 
-    /**
-     * @expectedException \Xiidea\EasyAuditBundle\Exception\UnrecognizedEventInfoException
-     */
     public function testInvalidResolverWithDebugOn()
     {
         $this->event = new Basic();
@@ -144,13 +139,12 @@ class EventResolverFactoryTest extends TestCase
 
         $this->resolverFactory->setCommonResolver(new InvalidEventInfoResolver());
 
+        $this->expectException(UnrecognizedEventInfoException::class);
+
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'basic');
         $this->assertNull($auditLog);
     }
 
-    /**
-     * @expectedException \Xiidea\EasyAuditBundle\Exception\InvalidServiceException
-     */
     public function testInvalidCustomResolverWithDebugOn()
     {
         $this->event = new Basic();
@@ -159,7 +153,7 @@ class EventResolverFactoryTest extends TestCase
         $this->initiateContainerWithDebugMode(true);
 
         $this->resolverFactory->setCommonResolver(new DefaultEventResolver());
-
+        $this->expectException(InvalidServiceException::class);
         $this->resolverFactory->addCustomResolver('r1', new InvalidEventResolver());
     }
 
@@ -177,7 +171,6 @@ class EventResolverFactoryTest extends TestCase
             ->method('getToken')
             ->willReturn(new DummyToken(new UserEntity()));
 
-
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'basic');
 
         $this->assertEventInfo($auditLog, array(
@@ -185,9 +178,8 @@ class EventResolverFactoryTest extends TestCase
             'description' => 'basic',
             'user' => 'admin',
             'impersonatingUser' => null,
-            'ip' => '127.0.0.1'
+            'ip' => '127.0.0.1',
         ));
-
     }
 
     public function testEmbeddedEventResolver()
@@ -202,7 +194,6 @@ class EventResolverFactoryTest extends TestCase
             ->method('getToken')
             ->willReturn(new DummyToken(new UserEntity()));
 
-
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'embedded');
 
         $this->assertEventInfo($auditLog, array(
@@ -210,7 +201,7 @@ class EventResolverFactoryTest extends TestCase
             'description' => 'It is an embedded event',
             'user' => 'admin',
             'impersonatingUser' => null,
-            'ip' => '127.0.0.1'
+            'ip' => '127.0.0.1',
         ));
     }
 
@@ -226,7 +217,7 @@ class EventResolverFactoryTest extends TestCase
 
     public function testEntityEventResolver()
     {
-        $this->event = new EntityEvent();
+        $this->event = new DoctrineEvent();
 
         $this->resolverFactory->setEntityEventResolver(new DefaultEventResolver());
 
@@ -237,13 +228,12 @@ class EventResolverFactoryTest extends TestCase
             ->method('getToken')
             ->willReturn(new DummyToken(new UserEntity()));
 
-
-        $auditLog = $this->resolverFactory->getEventLog($this->event, 'easy_audit.doctrine.entity.created');
+        $auditLog = $this->resolverFactory->getEventLog($this->event, 'easy_audit.doctrine.object.created');
 
         $this->assertEventInfo($auditLog,
             array(
-                'description' => 'easy_audit.doctrine.entity.created',
-                'name' => 'easy_audit.doctrine.entity.created',
+                'description' => 'easy_audit.doctrine.object.created',
+                'name' => 'easy_audit.doctrine.object.created',
                 'user' => 'admin',
                 'impersonatingUser' => null,
                 'ip' => '127.0.0.1',
@@ -256,7 +246,6 @@ class EventResolverFactoryTest extends TestCase
 
         $this->resolverFactory->setCommonResolver(new CustomEventResolver());
 
-
         $this->mockClientIpResolverForBrowserRequest();
 
         $this->mockSecurityAuthChecker();
@@ -264,7 +253,6 @@ class EventResolverFactoryTest extends TestCase
         $this->tokenStorage->expects($this->any())
             ->method('getToken')
             ->willReturn(new DummyToken(new UserEntity()));
-
 
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'basic');
 
@@ -290,19 +278,16 @@ class EventResolverFactoryTest extends TestCase
         $this->assertNull($auditLog);
     }
 
-    /**
-     * @expectedException \Xiidea\EasyAuditBundle\Exception\InvalidServiceException
-     */
     public function testCustomInValidEventResolverWithDebugOn()
     {
         $this->event = new Basic();
 
         $this->initiateContainerWithDebugMode(true);
+        $this->expectException(InvalidServiceException::class);
         $this->resolverFactory->setCommonResolver(new InvalidEventResolver());
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'basic');
 
         $this->assertNull($auditLog);
-
     }
 
     public function testEventTriggeredFromConsoleCommand()
@@ -325,7 +310,7 @@ class EventResolverFactoryTest extends TestCase
                 'name' => 'basic',
                 'user' => 'By Command',
                 'impersonatingUser' => null,
-                'type' => 'easy_audit.doctrine.entity.created',
+                'type' => 'easy_audit.doctrine.object.created',
                 'ip' => '',
             ));
     }
@@ -346,7 +331,6 @@ class EventResolverFactoryTest extends TestCase
             ->method('getToken')
             ->willReturn(new DummyToken(new UserEntity()));
 
-
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'basic');
 
         $this->assertEventInfo($auditLog, array(
@@ -354,7 +338,7 @@ class EventResolverFactoryTest extends TestCase
             'description' => 'basic',
             'user' => 'admin',
             'impersonatingUser' => null,
-            'ip' => '127.0.0.1'
+            'ip' => '127.0.0.1',
         ));
     }
 
@@ -376,16 +360,14 @@ class EventResolverFactoryTest extends TestCase
             ->method('getToken')
             ->willReturn(new DummyToken(new UserEntity()));
 
-
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'custom');
-
 
         $this->assertEventInfo($auditLog, array(
             'name' => 'custom',
             'description' => 'Custom custom Description',
             'user' => 'admin',
             'impersonatingUser' => null,
-            'ip' => '127.0.0.1'
+            'ip' => '127.0.0.1',
         ));
     }
 
@@ -399,13 +381,11 @@ class EventResolverFactoryTest extends TestCase
 
         $this->resolverFactory->setCommonResolver(new DefaultEventResolver());
 
-
         $this->mockClientIpResolverForBrowserRequest();
 
         $this->tokenStorage->expects($this->any())
             ->method('getToken')
             ->willReturn(new DummyToken(new UserEntity()));
-
 
         $this->mockSecurityAuthChecker();
 
@@ -416,13 +396,10 @@ class EventResolverFactoryTest extends TestCase
             'description' => 'basic',
             'user' => '',
             'impersonatingUser' => null,
-            'ip' => '127.0.0.1'
+            'ip' => '127.0.0.1',
         ));
     }
 
-    /**
-     * @expectedException \Exception
-     */
     public function testEventResolverWhenInvalidUserPropertyOptionIsGivenWithDebugOn()
     {
         $this->event = new Basic();
@@ -431,6 +408,7 @@ class EventResolverFactoryTest extends TestCase
         $this->resolverFactory->setTokenStorage($this->tokenStorage);
         $this->initiateContainerWithDebugMode(true);
 
+        $this->expectException(\Exception::class);
         $this->resolverFactory->setCommonResolver(new DefaultEventResolver());
 
         $this->tokenStorage->expects($this->once())
@@ -445,12 +423,11 @@ class EventResolverFactoryTest extends TestCase
         $this->event = new Basic();
         $this->resolverFactory->setCommonResolver(new DefaultEventResolver());
 
-
         $this->mockClientIpResolverForBrowserRequest();
 
         $this->tokenStorage->expects($this->once())
             ->method('getToken')
-            ->willReturn(new DummyToken(""));
+            ->willReturn(new DummyToken(''));
 
         $auditLog = $this->resolverFactory->getEventLog($this->event, 'basic');
 
@@ -460,7 +437,7 @@ class EventResolverFactoryTest extends TestCase
                 'name' => 'basic',
                 'user' => 'Anonymous',
                 'impersonatingUser' => null,
-                'type' => 'easy_audit.doctrine.entity.created',
+                'type' => 'easy_audit.doctrine.object.created',
                 'ip' => '127.0.0.1',
             ));
     }
@@ -472,9 +449,6 @@ class EventResolverFactoryTest extends TestCase
         $this->assertEquals('Anonymous', $username);
     }
 
-    /**
-     * @expectedException \Xiidea\EasyAuditBundle\Exception\UnrecognizedEntityException
-     */
     public function testCreateEventObjectFromArrayThrowsExceptionOnInvalidEntity()
     {
         $this->resolverFactory = new EventResolverFactory(array(), 'invalidProperty', Movie::class);
@@ -482,19 +456,19 @@ class EventResolverFactoryTest extends TestCase
 
         $this->event = new WithEmbeddedResolver();
         $this->initiateContainerWithDebugMode(true);
+        $this->expectException('\Xiidea\EasyAuditBundle\Exception\UnrecognizedEntityException');
 
         $this->resolverFactory->getEventLog($this->event, 'embedded');
     }
 
     /**
      * @param bool $on
-     * @param int $callIndex
+     * @param int  $callIndex
      */
     protected function initiateContainerWithDebugMode($on = true)
     {
         $this->resolverFactory->setDebug($on);
     }
-
 
     private function mockSecurityAuthChecker($isGranted = false)
     {
@@ -525,7 +499,7 @@ class EventResolverFactoryTest extends TestCase
 
     /**
      * @param AuditLog $auditLog
-     * @param array $expected
+     * @param array    $expected
      */
     private function assertEventInfo(AuditLog $auditLog, array $expected)
     {
@@ -539,4 +513,3 @@ class EventResolverFactoryTest extends TestCase
         $this->assertNotNull($auditLog->getEventTime());
     }
 }
- 

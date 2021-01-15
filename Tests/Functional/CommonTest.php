@@ -12,7 +12,7 @@
 namespace Xiidea\EasyAuditBundle\Tests\Functional;
 
 use Symfony\Component\DomCrawler\Crawler;
-use Xiidea\EasyAuditBundle\Entity\BaseAuditLog;
+use Xiidea\EasyAuditBundle\Model\BaseAuditLog;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\Basic;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\WithEmbeddedResolver;
 use Xiidea\EasyAuditBundle\Tests\Functional\Bundle\TestBundle\Controller\DefaultController;
@@ -30,9 +30,9 @@ class CommonTest extends BaseTestCase
 
         $container = $kernel->getContainer();
 
-        $entityClass = $container->getParameter('xiidea.easy_audit.entity_class');
+        $entityClass = $container->getParameter('xiidea.easy_audit.audit_log_class');
 
-        $this->assertInstanceOf(BaseAuditLog::class, (new $entityClass));
+        $this->assertInstanceOf(BaseAuditLog::class, (new $entityClass()));
     }
 
     /**
@@ -48,11 +48,9 @@ class CommonTest extends BaseTestCase
 
         $name = 'simple.event';
 
-        $container->get('event_dispatcher')->dispatch($name,
-            new Basic()
-        );
+        $container->get('event_dispatcher')->dispatch(new Basic(), $name);
 
-        $logFile = realpath($container->getParameter('kernel.cache_dir') . DIRECTORY_SEPARATOR . "audit.log");
+        $logFile = realpath($container->getParameter('kernel.cache_dir').DIRECTORY_SEPARATOR.'audit.log');
 
         $event = unserialize(file_get_contents($logFile));
         $this->assertEquals($name, $event['typeId']);
@@ -75,16 +73,12 @@ class CommonTest extends BaseTestCase
 
         $name = 'simple.event';
 
-        $container->get('event_dispatcher')->dispatch($name,
-            new Basic()
-        );
+        $container->get('event_dispatcher')->dispatch(new Basic(), $name);
 
-        $container->get('event_dispatcher')->dispatch($name."2",
-            new WithEmbeddedResolver()
-        );
+        $container->get('event_dispatcher')->dispatch(new WithEmbeddedResolver(), $name.'2');
 
-        $logFile = realpath($container->getParameter('kernel.cache_dir') . DIRECTORY_SEPARATOR . "audit.log");
-        $logFile2 = realpath($container->getParameter('kernel.cache_dir') . "2" . DIRECTORY_SEPARATOR . "audit.log");
+        $logFile = realpath($container->getParameter('kernel.cache_dir').DIRECTORY_SEPARATOR.'audit.log');
+        $logFile2 = realpath($container->getParameter('kernel.cache_dir').'2'.DIRECTORY_SEPARATOR.'audit.log');
 
         $event2 = unserialize(file_get_contents($logFile2));
         $event = unserialize(file_get_contents($logFile));
@@ -95,9 +89,9 @@ class CommonTest extends BaseTestCase
         $this->assertEquals('By Command', $event['user']);
         $this->assertEquals('', $event['ip']);
 
-        $this->assertEquals($name."2", $event2['typeId']);
-        $this->assertEquals($name."2", $event2['type']);
-        $this->assertEquals("It is an embedded event", $event2['description']);
+        $this->assertEquals($name.'2', $event2['typeId']);
+        $this->assertEquals($name.'2', $event2['type']);
+        $this->assertEquals('It is an embedded event', $event2['description']);
         $this->assertEquals('By Command', $event2['user']);
         $this->assertEquals('', $event2['ip']);
     }
@@ -142,7 +136,6 @@ class CommonTest extends BaseTestCase
 
         $this->assertEquals('admin', $event['user']);
         $this->assertEquals('127.0.0.1', $event['ip']);
-
     }
 
     /**
@@ -151,6 +144,8 @@ class CommonTest extends BaseTestCase
      */
     public function testEventOnPublicUrlWithoutUserLogin()
     {
+        $this->createDefaultClient();
+
         $name = 'simple.event';
         $crawler = $this->client->request('GET', "/public/some-public-url/{$name}");
         $this->assertTrue($this->client->getResponse()->isSuccessful());
@@ -166,6 +161,7 @@ class CommonTest extends BaseTestCase
 
     /**
      * @param Crawler $crawler
+     *
      * @return mixed
      */
     private function getEventArrayFromResponse(Crawler $crawler)
@@ -175,6 +171,4 @@ class CommonTest extends BaseTestCase
         $event = unserialize($parts[1]);
         return $event;
     }
-
-
 }

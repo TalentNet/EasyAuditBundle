@@ -11,45 +11,32 @@
 
 namespace Xiidea\EasyAuditBundle\Tests\Functional;
 
-use Symfony\Component\Filesystem\Filesystem;
-
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class BaseTestCase extends WebTestCase
 {
-    /** @var null|\Symfony\Bundle\FrameworkBundle\Client */
+    /** @var null|\Symfony\Bundle\FrameworkBundle\KernelBrowser */
     protected $client = null;
 
-    static protected function createKernel(array $options = array())
+    protected static function createKernel(array $options = array())
     {
         return new TestKernel(
             isset($options['config']) ? $options['config'] : 'config',
-            isset($options['debug']) ? (boolean)$options['debug'] : true
+            isset($options['debug']) ? (bool) $options['debug'] : true
         );
     }
 
-    protected function tearDown()
-    {
-        $this->cleanTmpDir();
-    }
-
-    protected function setUp()
+    protected function createDefaultClient()
     {
         $this->client = static::createClient();
-        $this->cleanTmpDir();
-    }
-
-    private function cleanTmpDir()
-    {
-        $fs = new Filesystem();
-        $fs->remove(sys_get_temp_dir() . '/XiideaEasyAuditBundle');
     }
 
     protected function logIn()
     {
-        $this->client = static::createClient(array(), array(
+        $this->client = static::createClient(array(), [
             'PHP_AUTH_USER' => 'admin',
             'PHP_AUTH_PW' => 'login',
-        ));
+        ]
+        );
     }
 }

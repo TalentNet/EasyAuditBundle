@@ -19,14 +19,14 @@ use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\DependencyInjection\Loader;
 
 /**
- * This is the class that loads and manages your bundle configuration
+ * This is the class that loads and manages your bundle configuration.
  *
  * To learn more see {@link http://symfony.com/doc/current/cookbook/bundles/extension.html}
  */
 class XiideaEasyAuditExtension extends Extension implements PrependExtensionInterface
 {
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function load(array $configs, ContainerBuilder $container)
     {
@@ -42,18 +42,20 @@ class XiideaEasyAuditExtension extends Extension implements PrependExtensionInte
 
         $this->loadDefaultResolverServices($config, $loader);
 
-        if ($config['doctrine_entities'] !== false) {
+        if (false !== $config['doctrine_objects']) {
             $loader->load('doctrine_services.yml');
         }
     }
 
     /**
      * @param $config
-     * @param $loader
+     * @param LoaderInterface $loader
+     *
+     * @throws \Exception
      */
     protected function loadDefaultResolverServices($config, LoaderInterface $loader)
     {
-        if ($config['resolver'] == 'xiidea.easy_audit.default_event_resolver') {
+        if ('xiidea.easy_audit.default_event_resolver' === $config['resolver']) {
             $loader->load('default/event-resolver.yml');
         }
 
@@ -61,21 +63,41 @@ class XiideaEasyAuditExtension extends Extension implements PrependExtensionInte
             $loader->load('default/logger.yml');
         }
 
-        if ($config['doctrine_entities'] !== false && $config['entity_event_resolver'] == 'xiidea.easy_audit.default_entity_event_resolver') {
-            $loader->load('default/entity-event-resolver.yml');
+        if (false !== $config['doctrine_objects'] && 'xiidea.easy_audit.default_doctrine_event_resolver' === $config['doctrine_event_resolver']) {
+            $loader->load('default/doctrine-event-resolver.yml');
         }
     }
 
     /**
      * Allow an extension to prepend the extension configurations.
+     * @param ContainerBuilder $container
      */
     public function prepend(ContainerBuilder $container)
     {
-        $extensions = $container->getExtensionConfig('doctrine');
-        $configs = $container->getExtensionConfig($this->getAlias());
+        $prependConfig = $this->getExtendedConfig($container);
 
-        if (!empty($extensions) && !isset($configs['entity_event_resolver'])) {
-            $container->prependExtensionConfig($this->getAlias(), ['entity_event_resolver' => 'xiidea.easy_audit.default_entity_event_resolver']);
+        if (!empty($prependConfig)) {
+            $container->prependExtensionConfig($this->getAlias(), $prependConfig);
         }
+    }
+
+    /**
+     * @param ContainerBuilder $container
+     *
+     * @return array
+     */
+    protected function getExtendedConfig(ContainerBuilder $container)
+    {
+        $configs = array_merge(...$container->getExtensionConfig($this->getAlias()));
+
+        $prependConfig = [];
+
+        $doctrineConfig = $container->getExtensionConfig('doctrine');
+
+        if (!empty($doctrineConfig) && !isset($configs['doctrine_event_resolver'])) {
+            $prependConfig['doctrine_event_resolver'] = 'xiidea.easy_audit.default_doctrine_event_resolver';
+        }
+
+        return $prependConfig;
     }
 }

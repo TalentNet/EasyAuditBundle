@@ -18,15 +18,13 @@ use Symfony\Component\Console\ConsoleEvents;
 
 class DoctrineDeleteEventLoggerTest extends TestCase
 {
-
-    /** @var  \PHPUnit_Framework_MockObject_MockObject */
+    /** @var \PHPUnit_Framework_MockObject_MockObject */
     private $logger;
 
-    /** @var  \PHPUnit_Framework_MockObject_MockObject */
+    /** @var \PHPUnit_Framework_MockObject_MockObject */
     private $responseevent;
 
-    public function setUp()
-    {
+    public function setUp(): void    {
         $this->responseevent = $this->getMockBuilder('Symfony\Component\HttpKernel\Event\FilterResponseEvent')
             ->disableOriginalConstructor()
             ->getMock();
@@ -35,18 +33,12 @@ class DoctrineDeleteEventLoggerTest extends TestCase
             ->getMock();
     }
 
-    public function testConstructor()
-    {
-        $subscriber = new DoctrineDeleteEventLogger($this->logger);
-        $this->assertAttributeEquals($this->logger, 'logger', $subscriber);
-    }
-
     public function testSubscribedEvents()
     {
         $subscriber = new DoctrineDeleteEventLogger($this->logger);
         $this->assertEquals([
             ConsoleEvents::TERMINATE => 'savePendingLogs',
-            KernelEvents::TERMINATE => 'savePendingLogs'
+            KernelEvents::TERMINATE => 'savePendingLogs',
         ], $subscriber->getSubscribedEvents());
     }
 
@@ -57,6 +49,5 @@ class DoctrineDeleteEventLoggerTest extends TestCase
             ->method('savePendingLogs');
         $subscriber = new DoctrineDeleteEventLogger($this->logger);
         $subscriber->savePendingLogs($this->responseevent);
-
     }
 }

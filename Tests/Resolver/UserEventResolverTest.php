@@ -11,31 +11,29 @@
 
 namespace Xiidea\EasyAuditBundle\Tests\Resolver;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Event\AuthenticationFailureEvent;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Xiidea\EasyAuditBundle\Resolver\UserEventResolver;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Common\DummyToken;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\Basic;
-use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\DummyAuthenticationFailureEvent;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\DummyFilterUserResponseEvent;
-use Xiidea\EasyAuditBundle\Tests\Fixtures\Event\DummyUserEvent;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\ORM\UserEntity;
 
 class UserEventResolverTest extends TestCase
 {
-
-    /** @var  \PHPUnit_Framework_MockObject_MockObject */
+    /** @var MockObject */
     private $tokenStorage;
 
-    /** @var  UserEventResolver */
+    /** @var UserEventResolver */
     private $eventResolver;
 
-    public function setUp()
-    {
+    public function setUp(): void    {
         $this->tokenStorage = $this->createMock(TokenStorageInterface::class);
         $this->eventResolver = new UserEventResolver();
         $this->eventResolver->setTokenStorage($this->tokenStorage);
-
     }
 
     public function testIsAnInstanceOfEventResolverInterface()
@@ -49,21 +47,6 @@ class UserEventResolverTest extends TestCase
         $this->assertEquals(array('type' => 'any_random_event', 'description' => 'any_random_event'), $auditLog);
     }
 
-    public function testPasswordChangedEvent()
-    {
-        $event = new DummyFilterUserResponseEvent(new UserEntity());
-
-        $auditLog = $this->eventResolver->getEventLogInfo($event, 'fos_user.change_password.edit.completed');
-
-        $this->assertNotNull($auditLog);
-
-        $this->assertEquals(array(
-            'description' => "Password of user 'admin' Changed Successfully",
-            'type' => "Password Changed"
-        ), $auditLog);
-
-    }
-
     public function testLoginEvent()
     {
         $event = new DummyFilterUserResponseEvent(new UserEntity());
@@ -74,36 +57,25 @@ class UserEventResolverTest extends TestCase
 
         $auditLog = $this->eventResolver->getEventLogInfo($event, 'security.interactive_login');
 
-        $this->assertEquals(array (
+        $this->assertEquals(array(
             'description' => "User 'admin' Logged in Successfully",
             'type' => 'User Logged in',
-        ),$auditLog);
+        ), $auditLog);
     }
 
-    public function testLoginUsingRememberMeService() {
-        $event = new DummyUserEvent(new UserEntity());
-
-        $auditLog = $this->eventResolver->getEventLogInfo($event, 'fos_user.security.implicit_login');
-
-        $this->assertEquals(array (
-            'description' => "User 'admin' Logged in Successfully using remember me service",
-            'type' => 'User Logged in',
-        ),$auditLog);
-    }
 
     public function testAuthenticationFailureEvent()
     {
-        $event = new DummyAuthenticationFailureEvent();
+        $event = new AuthenticationFailureEvent(new DummyToken('user'), new AuthenticationException());
 
         $auditLog = $this->eventResolver->getEventLogInfo($event, 'security.authentication.failure');
 
         $this->assertNotNull($auditLog);
 
         $this->assertEquals(array(
-            'description' => "Bad credentials Username: user",
-            'type' => "Authentication Failed"
+            'description' => 'Bad credentials Username: user',
+            'type' => 'Authentication Failed',
         ), $auditLog);
-
     }
 
     public function testUnknownUserEvent()
@@ -139,7 +111,7 @@ class UserEventResolverTest extends TestCase
         $this->assertEquals(
             array(
                 'description' => $randomEvent,
-                'type' => $randomEvent
+                'type' => $randomEvent,
             ),
             $auditLog
         );
@@ -147,7 +119,8 @@ class UserEventResolverTest extends TestCase
 
     /**
      * @param $eventClass
-     * @return \PHPUnit_Framework_MockObject_MockObject
+     *
+     * @return MockObject
      */
     protected function initializeMockEvent($eventClass)
     {
@@ -159,4 +132,3 @@ class UserEventResolverTest extends TestCase
         return $event;
     }
 }
- 

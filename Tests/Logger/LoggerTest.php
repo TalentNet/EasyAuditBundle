@@ -11,28 +11,30 @@
 
 namespace Xiidea\EasyAuditBundle\Tests\Logger;
 
+use Doctrine\Common\Persistence\ObjectManager;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Xiidea\EasyAuditBundle\Events\DoctrineEvents;
 use Xiidea\EasyAuditBundle\Logger\Logger;
+use Xiidea\EasyAuditBundle\Model\BaseAuditLog;
 use Xiidea\EasyAuditBundle\Tests\Fixtures\ORM\AuditLog;
 
-class LoggerTest extends TestCase {
-
+class LoggerTest extends TestCase
+{
     /** @var Logger */
     protected $logger;
 
-    /** @var \PHPUnit_Framework_MockObject_MockObject */
+    /** @var MockObject */
     protected $entityManager;
 
-    public function setUp()
-    {
+    public function setUp(): void    {
         $registry = $this
-            ->getMockBuilder('Doctrine\Bundle\DoctrineBundle\Registry')
+            ->getMockBuilder('Doctrine\Common\Persistence\ManagerRegistry')
             ->disableOriginalConstructor()
             ->getMock();
 
         $this->entityManager = $this
-            ->getMockBuilder('Doctrine\ORM\EntityManager')
+            ->getMockBuilder(ObjectManager::class)
             ->disableOriginalConstructor()
             ->getMock();
 
@@ -40,7 +42,7 @@ class LoggerTest extends TestCase {
             ->method('getManager')
             ->will($this->returnValue($this->entityManager));
 
-        $this->logger =  new Logger($registry);
+        $this->logger = new Logger($registry);
     }
 
     public function testIsAnInstanceOfLoggerInterface()
@@ -50,69 +52,58 @@ class LoggerTest extends TestCase {
 
     public function testLogCallsPersistWithDoctrineForAuditLogObject()
     {
-
         $this->entityManager
             ->expects($this->at(0))
-            ->method("persist")
-            ->with($this->isInstanceOf('Xiidea\EasyAuditBundle\Entity\BaseAuditLog'));
+            ->method('persist')
+            ->with($this->isInstanceOf(BaseAuditLog::class));
         $this->entityManager
             ->expects($this->at(1))
-            ->method("flush")
-            ->with($this->isInstanceOf('Xiidea\EasyAuditBundle\Entity\BaseAuditLog'));
-
+            ->method('flush')
+            ->with($this->isInstanceOf(BaseAuditLog::class));
 
         $this->logger->log(new AuditLog());
-
     }
 
     public function testLogCallsDeferred()
     {
-
         $this->entityManager
             ->expects($this->never())
-            ->method("persist");
+            ->method('persist');
         $this->entityManager
             ->expects($this->never())
-            ->method("flush");
-
+            ->method('flush');
 
         $event = new AuditLog();
         $event->setTypeId(DoctrineEvents::ENTITY_DELETED);
         $this->logger->log($event);
-        $this->assertAttributeEquals([$event], 'entityDeleteLogs', $this->logger);
-
     }
 
     public function testSavePendingLogsForDelete()
     {
         $this->entityManager
             ->expects($this->at(0))
-            ->method("persist")
-            ->with($this->isInstanceOf('Xiidea\EasyAuditBundle\Entity\BaseAuditLog'));
+            ->method('persist')
+            ->with($this->isInstanceOf(BaseAuditLog::class));
         $this->entityManager
             ->expects($this->at(1))
-            ->method("flush")
-            ->with($this->isInstanceOf('Xiidea\EasyAuditBundle\Entity\BaseAuditLog'));
+            ->method('flush')
+            ->with($this->isInstanceOf(BaseAuditLog::class));
 
         $event = new AuditLog();
         $event->setTypeId(DoctrineEvents::ENTITY_DELETED);
         $this->logger->log($event);
-        $this->assertAttributeEquals([$event], 'entityDeleteLogs', $this->logger);
         $this->logger->savePendingLogs();
-        $this->assertAttributeEquals([], 'entityDeleteLogs', $this->logger);
-
     }
 
     public function testLogDoesNotCallToPersist()
     {
         $this->entityManager
             ->expects($this->never())
-            ->method("persist");
+            ->method('persist');
         $this->entityManager
             ->expects($this->never())
-            ->method("flush");
+            ->method('flush');
 
         $this->logger->log(null);
     }
 }
- 

@@ -12,17 +12,17 @@
 namespace Xiidea\EasyAuditBundle\Tests\DependencyInjection;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\Yaml\Parser;
 use Xiidea\EasyAuditBundle\DependencyInjection\XiideaEasyAuditExtension;
 
-class XiideaEasyAuditExtensionTest extends TestCase {
-
+class XiideaEasyAuditExtensionTest extends TestCase
+{
     /** @var ContainerBuilder */
     protected $container;
 
-    protected function setUp()
-    {
+    protected function setUp(): void    {
         $this->container = new ContainerBuilder();
     }
 
@@ -34,7 +34,7 @@ class XiideaEasyAuditExtensionTest extends TestCase {
         $this->assertHasDefinition('xiidea.easy_audit.logger.service');
         $this->assertHasDefinition('xiidea.easy_audit.logger_factory');
         $this->assertHasDefinition('xiidea.easy_audit.default_event_resolver');
-        $this->assertNotHasDefinition('xiidea.easy_audit.default_entity_event_resolver');
+        $this->assertNotHasDefinition('xiidea.easy_audit.default_doctrine_event_resolver');
         $this->assertHasDefinition('xiidea.easy_audit.event_resolver_factory');
         $this->assertHasDefinition('xiidea.easy_audit.event_listener');
         $this->assertHasDefinition('xiidea.easy_audit.doctrine_subscriber');
@@ -45,9 +45,9 @@ class XiideaEasyAuditExtensionTest extends TestCase {
         $loader = new XiideaEasyAuditExtension();
 
         $config = $this->getRequiredConfig();
-        $config['entity_event_resolver'] = 'xiidea.easy_audit.default_entity_event_resolver';
+        $config['doctrine_event_resolver'] = 'xiidea.easy_audit.default_doctrine_event_resolver';
         $loader->load(array($config), $this->container);
-        $this->assertHasDefinition('xiidea.easy_audit.default_entity_event_resolver');
+        $this->assertHasDefinition('xiidea.easy_audit.default_doctrine_event_resolver');
     }
 
     public function testPrependEntityEventResolverValueOnlyIfDoctrineLoaded()
@@ -59,41 +59,34 @@ class XiideaEasyAuditExtensionTest extends TestCase {
 
         $loader->prepend($this->container);
         $loader->load($this->container->getExtensionConfig($loader->getAlias()), $this->container);
-        $this->assertHasDefinition('xiidea.easy_audit.default_entity_event_resolver');
+        $this->assertHasDefinition('xiidea.easy_audit.default_doctrine_event_resolver');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException
-     */
     public function testEasyAuditLoadThrowsExceptionUnlessEntityClassSet()
     {
         $loader = new XiideaEasyAuditExtension();
         $config = $this->getRequiredConfig();
-        unset($config['entity_class']);
+        unset($config['audit_log_class']);
 
+        $this->expectException(InvalidConfigurationException::class);
         $loader->load(array($config), new ContainerBuilder());
     }
 
-    /**
-     * @expectedException \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException
-     */
     public function testEasyAuditLoadThrowsExceptionUnlessUserPropertySet()
     {
         $loader = new XiideaEasyAuditExtension();
         $config = $this->getRequiredConfig();
         unset($config['user_property']);
-
+        $this->expectException(InvalidConfigurationException::class);
         $loader->load(array($config), new ContainerBuilder());
     }
 
-    /**
-     * @expectedException \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException
-     */
     public function testEasyAuditLoadThrowsExceptionForInvalidLoggerChannelDefinition()
     {
         $loader = new XiideaEasyAuditExtension();
         $config = $this->getRequiredConfig();
-        $config['logger_channel']  = array('foo.logger' => array("info", "!debug"));
+        $config['logger_channel'] = array('foo.logger' => array('info', '!debug'));
+        $this->expectException(InvalidConfigurationException::class);
 
         $loader->load(array($config), new ContainerBuilder());
     }
@@ -102,7 +95,7 @@ class XiideaEasyAuditExtensionTest extends TestCase {
     {
         $loader = new XiideaEasyAuditExtension();
         $config = $this->getRequiredConfig();
-        $config['doctrine_entities'] = true;
+        $config['doctrine_objects'] = true;
 
         $loader->load(array($config), $this->container);
         $this->assertHasDefinition('xiidea.easy_audit.doctrine_subscriber');
@@ -112,12 +105,12 @@ class XiideaEasyAuditExtensionTest extends TestCase {
     {
         $loader = new XiideaEasyAuditExtension();
         $config = $this->getRequiredConfig();
-        $config['logger_channel']  = array('foo.logger' => "!info");
+        $config['logger_channel'] = array('foo.logger' => '!info');
 
         $channel = array(
             'foo.logger' => array(
                 'type' => 'exclusive',
-                'elements' => array('info')
+                'elements' => array('info'),
             ),
         );
 
@@ -129,7 +122,7 @@ class XiideaEasyAuditExtensionTest extends TestCase {
     {
         $loader = new XiideaEasyAuditExtension();
         $config = $this->getRequiredConfig();
-        $config['doctrine_entities'] = false;
+        $config['doctrine_objects'] = false;
 
         $loader->load(array($config), $this->container);
         $this->assertNotHasDefinition('xiidea.easy_audit.doctrine_subscriber');
@@ -162,24 +155,24 @@ class XiideaEasyAuditExtensionTest extends TestCase {
     {
         $loader = new XiideaEasyAuditExtension();
         $config = $this->getRequiredConfig();
-        $config['entity_class'] = 'foo.entity';
+        $config['audit_log_class'] = 'foo.entity';
 
         $loader->load(array($config), $this->container);
 
-        $this->assertEquals('foo.entity', $this->container->getParameter('xiidea.easy_audit.entity_class'));
+        $this->assertEquals('foo.entity', $this->container->getParameter('xiidea.easy_audit.audit_log_class'));
     }
 
     public function testOverwriteEntityEventResolver()
     {
         $loader = new XiideaEasyAuditExtension();
         $config = $this->getRequiredConfig();
-        $config['entity_event_resolver'] = 'foo.resolver';
+        $config['doctrine_event_resolver'] = 'foo.resolver';
 
         $loader->load(array($config), $this->container);
 
-        $this->assertNotHasDefinition('xiidea.easy_audit.default_entity_event_resolver');
+        $this->assertNotHasDefinition('xiidea.easy_audit.default_doctrine_event_resolver');
 
-        $this->assertEquals('foo.resolver', $this->container->getParameter('xiidea.easy_audit.entity_event_resolver'));
+        $this->assertEquals('foo.resolver', $this->container->getParameter('xiidea.easy_audit.doctrine_event_resolver'));
     }
 
     public function testFullConfiguration()
@@ -192,38 +185,39 @@ class XiideaEasyAuditExtensionTest extends TestCase {
         $channel = array(
             'xiidea.easy_audit.logger.service' => array(
                 'type' => 'inclusive',
-                'elements' => array('info', 'debug')
+                'elements' => array('info', 'debug'),
             ),
             'file.logger' => array(
                 'type' => 'exclusive',
-                'elements' => array('info', 'debug')
+                'elements' => array('info', 'debug'),
             ),
         );
 
-        $this->assertNotFalse($this->container->getParameter('xiidea.easy_audit.doctrine_entities'));
+        $this->assertNotFalse($this->container->getParameter('xiidea.easy_audit.doctrine_objects'));
         $this->assertNotFalse($this->container->getParameter('xiidea.easy_audit.events'));
-        $this->assertCount(2, $this->container->getParameter('xiidea.easy_audit.doctrine_entities'));
+        $this->assertCount(2, $this->container->getParameter('xiidea.easy_audit.doctrine_objects'));
         $this->assertCount(2, $this->container->getParameter('xiidea.easy_audit.events'));
         $this->assertCount(2, $this->container->getParameter('xiidea.easy_audit.logger_channel'));
         $this->assertEquals($channel, $this->container->getParameter('xiidea.easy_audit.logger_channel'));
     }
 
     /**
-     * getRequiredConfig
+     * getRequiredConfig.
      *
      * @return array
      */
     protected function getRequiredConfig()
     {
         $yaml = <<<EOF
-entity_class : MyProject\Bundle\MyBundle\Entity\AuditLog                     #Required
+audit_log_class : MyProject\Bundle\MyBundle\Entity\AuditLog                     #Required
 user_property : ~ # or username                                              #Required
 EOF;
         return $this->getArrayFromYaml($yaml);
     }
 
+
     /**
-     * getFullConfig
+     * getFullConfig.
      *
      * @return array
      */
@@ -231,15 +225,15 @@ EOF;
     {
         $yaml = <<<EOF
 resolver: xiidea.easy_audit.default_event_resolver                           #Optional
-entity_class : MyProject\Bundle\MyBundle\Entity\AuditLog                     #Required
-entity_event_resolver : xiidea.easy_audit.default_entity_event_resolver      #Optional
+audit_log_class : MyProject\Bundle\MyBundle\Entity\AuditLog                     #Required
+doctrine_event_resolver : xiidea.easy_audit.default_doctrine_event_resolver      #Optional
 
 #user property to use as actor of an event
 #valid value will be any valid property of your user class ~
 user_property : ~ # or username                                               #Required
 
 #List of doctrine entity:event you wish to track
-doctrine_entities :                                                          #Optional
+doctrine_objects :                                                          #Optional
      MyProject\Bundle\MyBundle\Entity\MyEntity : [created, updated, deleted]
      MyProject\Bundle\MyBundle\Entity\MyEntity2 : ~
 
@@ -273,6 +267,7 @@ EOF;
 
     /**
      * @param $yaml
+     *
      * @return mixed
      */
     protected function getArrayFromYaml($yaml)
@@ -281,5 +276,4 @@ EOF;
 
         return $parser->parse($yaml);
     }
-
 }

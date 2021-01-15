@@ -12,10 +12,10 @@
 namespace Xiidea\EasyAuditBundle\Common;
 
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Security\Core\Authentication\Token\SwitchUserToken;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
-use Symfony\Component\Security\Core\Role\SwitchUserRole;
-use \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 class UserAwareComponent
 {
@@ -42,16 +42,15 @@ class UserAwareComponent
         $this->tokenStorage = $tokenStorage;
     }
 
-
     /**
-     * Get a user from the Security Context
+     * Get a user from the Security Context.
      *
      * @return mixed
+     *
      * @throws \LogicException If SecurityBundle is not available
      */
     public function getUser()
     {
-
         if (null === $token = $this->tokenStorage->getToken()) {
             return null;
         }
@@ -102,7 +101,7 @@ class UserAwareComponent
     {
         $user = $this->getUser();
 
-        if(empty($user)) {
+        if (empty($user)) {
             return $this->getAnonymousUserName();
         }
 
@@ -117,24 +116,22 @@ class UserAwareComponent
         $request = $this->getRequest();
 
         if ($request && $request->getClientIp()) {
-            return "Anonymous";
+            return 'Anonymous';
         }
 
-        return "By Command";
+        return 'By Command';
     }
 
     /**
      * @param TokenInterface $token
-     * @param null $user
+     * @param null           $user
+     *
      * @return mixed
      */
     protected function getImpersonatingUserFromRole($token, $user = null)
     {
-        foreach ($token->getRoles() as $role) {
-            if ($role instanceof SwitchUserRole) {
-                $user = $role->getSource()->getUser();
-                break;
-            }
+        if ($token instanceof SwitchUserToken) {
+            $user = $token->getOriginalToken()->getUser();
         }
 
         return $user;
@@ -142,7 +139,7 @@ class UserAwareComponent
 
     protected function getRequest()
     {
-        if($this->requestStack === null) {
+        if (null === $this->requestStack) {
             return false;
         }
 

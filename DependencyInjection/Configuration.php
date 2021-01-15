@@ -17,20 +17,22 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 /**
- * This is the class that validates and merges configuration from your app/config files
+ * This is the class that validates and merges configuration from your app/config files.
  *
  * To learn more see {@link http://symfony.com/doc/current/cookbook/bundles/extension.html#cookbook-bundles-extension-config-class}
  */
 class Configuration implements ConfigurationInterface
 {
+    const ROOT_NODE_NAME = 'xiidea_easy_audit';
+
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function getConfigTreeBuilder()
     {
-        $treeBuilder = new TreeBuilder();
+        $treeBuilder = new TreeBuilder(self::ROOT_NODE_NAME);
 
-        $rootNode = $treeBuilder->root('xiidea_easy_audit');
+        $rootNode = $treeBuilder->getRootNode();
 
         $this->addRequiredConfigs($rootNode);
         $this->addDefaultServices($rootNode);
@@ -48,7 +50,7 @@ class Configuration implements ConfigurationInterface
         $rootNode
             ->children()
                 ->scalarNode('user_property')->isRequired()->end()
-                ->scalarNode('entity_class')->cannotBeOverwritten()->isRequired()->cannotBeEmpty()->end()
+                ->scalarNode('audit_log_class')->cannotBeOverwritten()->isRequired()->cannotBeEmpty()->end()
             ->end();
     }
 
@@ -60,7 +62,7 @@ class Configuration implements ConfigurationInterface
         $rootNode
             ->children()
                 ->scalarNode('resolver')->defaultValue('xiidea.easy_audit.default_event_resolver')->end()
-                ->scalarNode('entity_event_resolver')
+                ->scalarNode('doctrine_event_resolver')
                     ->defaultValue(null)
                 ->end()
                 ->booleanNode('default_logger')->defaultValue(true)->end()
@@ -74,7 +76,9 @@ class Configuration implements ConfigurationInterface
     {
         $rootNode
             ->children()
-                ->variableNode('doctrine_entities')->defaultValue(array())->end()
+                ->variableNode('doctrine_objects')
+                    ->defaultValue(array())
+                ->end()
                 ->variableNode('events')->defaultValue(array())->end()
                 ->variableNode('custom_resolvers')->defaultValue(array())->end()
             ->end();
@@ -127,12 +131,13 @@ class Configuration implements ConfigurationInterface
     }
 
     /**
-     * @param boolean $invalid
+     * @param bool $invalid
+     *
      * @throws InvalidConfigurationException
      */
     public static function throwExceptionOnInvalid($invalid)
     {
-        if(!$invalid) {
+        if (!$invalid) {
             return;
         }
 
