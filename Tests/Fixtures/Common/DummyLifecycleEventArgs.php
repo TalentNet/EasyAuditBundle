@@ -8,7 +8,7 @@
 
 namespace Xiidea\EasyAuditBundle\Tests\Fixtures\Common;
 
-use Doctrine\Common\Persistence\Event\LifecycleEventArgs;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
 
 class DummyLifecycleEventArgs extends LifecycleEventArgs
 {
