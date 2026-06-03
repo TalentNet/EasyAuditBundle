@@ -27,6 +27,6 @@ class InteractiveLoginCommand extends UserLoginCommand
     #[\Override]
     public function resolve($event)
     {
-        return $this->getEventDetailsArray($this->userAwareComponent->getUsername());
+        return $this->getEventDetailsArray($this->userAwareComponent->getUserIdentifier());
     }
 }

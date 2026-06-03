@@ -445,7 +445,7 @@ class EventResolverFactoryTest extends TestCase
     public function testGetUserNameForAnonymousUser()
     {
         $this->mockClientIpResolverForBrowserRequest();
-        $username = $this->resolverFactory->getUsername();
+        $username = $this->resolverFactory->getUserIdentifier();
         $this->assertEquals('Anonymous', $username);
     }
 
