@@ -16,6 +16,7 @@ use Symfony\Component\Security\Core\Authentication\Token\SwitchUserToken;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 class UserAwareComponent
 {
@@ -45,7 +46,7 @@ class UserAwareComponent
     /**
      * Get a user from the Security Context.
      *
-     * @return mixed
+     * @return UserInterface|null
      *
      * @throws \LogicException If SecurityBundle is not available
      */
@@ -97,15 +98,11 @@ class UserAwareComponent
     /**
      * @return string
      */
-    public function getUsername()
+    public function getUserIdentifier()
     {
         $user = $this->getUser();
 
-        if (empty($user)) {
-            return $this->getAnonymousUserName();
-        }
-
-        return $user->getUsername();
+        return $user ? $user->getUserIdentifier() : $this->getAnonymousUserName();
     }
 
     /**
